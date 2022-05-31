@@ -14,6 +14,13 @@ const DEFAULT_DIAMETER: f64 = 72.0;
 /// Span of a data sector in radians
 const ARC: f64 = 2.0 * PI / (SECTORS as f64);
 
+/// An unsigned integer representing a symbol code of a given TopCode. Since TopCodes never exceed
+/// 13 bits in size, a u16 is sufficient.
+///
+/// This type alias exists simply ensure that if the data type needs to change, this is the only
+/// line of code that should have to change.
+pub type Code = u16;
+
 /// TopCodes (Tangible Object Placement Codes) are black-and-white circular fiducials designed to
 /// be recognized quickly by low-resolution digital cameras with poor optics. The TopCode symmbol
 /// format is based on the open SpotCode format:
@@ -25,7 +32,7 @@ const ARC: f64 = 2.0 * PI / (SECTORS as f64);
 #[derive(Clone, Copy, Debug)]
 pub struct TopCode {
     /// The symbol's code, if valid
-    pub code: Option<isize>,
+    pub code: Option<Code>,
     /// Width of a single ring
     pub unit: f64,
     /// Angular orientation of the symbol (in radians)
@@ -53,7 +60,7 @@ impl Default for TopCode {
 
 impl TopCode {
     /// Create a default TopCode with the given identifier.
-    pub fn new(code: isize) -> Self {
+    pub fn new(code: Code) -> Self {
         let mut topcode = Self::default();
         topcode.code = Some(code);
         topcode
@@ -70,20 +77,20 @@ impl TopCode {
         self.code.is_some()
     }
 
-    /// Decodes a symbol given any point (cx, by) inside the center circle (bulls-eye) of the code.
-    pub fn decode(&mut self, scanner: &Scanner, cx: isize, cy: isize) -> Option<isize> {
+    /// Decodes a symbol given any point (cx, by) inside the center circle (bullseye) of the code.
+    pub fn decode(&mut self, scanner: &Scanner, cx: usize, cy: usize) -> Option<Code> {
         todo!()
     }
 
     /// Attempts to decode the binary pixels of an image into a code value.
     ///
     /// The `unit` is the width of a single ring and `arc_adjustment` corrects the rotation.
-    fn read_code(scanner: &Scanner, unit: f64, arc_adjustment: f64) -> Option<isize> {
+    fn read_code(scanner: &Scanner, unit: f64, arc_adjustment: f64) -> Option<Code> {
         todo!()
     }
 
     /// Tries each of the possible rotations and returns the lowest.
-    fn rotate_lowest(&mut self, mut bits: isize, mut arc_adjustment: f64) -> isize {
+    fn rotate_lowest(&mut self, mut bits: Code, mut arc_adjustment: f64) -> Code {
         let mut min = bits;
         let mask = 0x1fff;
 
@@ -104,7 +111,7 @@ impl TopCode {
     }
 
     /// Only codes with a checksum of 5 are valid.
-    fn checksum(mut bits: isize) -> bool {
+    fn checksum(mut bits: Code) -> bool {
         let mut sum = 0;
         for _i in 0..SECTORS {
             sum += bits & 0x01;
@@ -114,8 +121,8 @@ impl TopCode {
         return sum == 5;
     }
 
-    /// Returns true if the given point is inside the bulls-eye
-    fn in_bulls_eye(&self, px: f64, py: f64) -> bool {
+    /// Returns true if the given point is inside the bullseye
+    pub(crate) fn in_bullseye(&self, px: f64, py: f64) -> bool {
         return ((self.x - px) * (self.x - px) + (self.y - py) * (self.y - py))
             <= (self.unit * self.unit);
     }
@@ -156,17 +163,17 @@ mod tests {
     }
 
     #[test]
-    fn point_is_in_bulls_eye() {
+    fn point_is_in_bullseye() {
         let topcode = TopCode::default();
-        assert!(topcode.in_bulls_eye(0.0, 0.0));
-        assert!(topcode.in_bulls_eye(topcode.unit, 0.0));
-        assert!(topcode.in_bulls_eye(0.0, topcode.unit));
+        assert!(topcode.in_bullseye(0.0, 0.0));
+        assert!(topcode.in_bullseye(topcode.unit, 0.0));
+        assert!(topcode.in_bullseye(0.0, topcode.unit));
     }
 
     #[test]
-    fn point_is_not_in_bulls_eye() {
+    fn point_is_not_in_bullseye() {
         let topcode = TopCode::default();
-        assert!(!topcode.in_bulls_eye(topcode.unit, 0.1));
-        assert!(!topcode.in_bulls_eye(0.1, topcode.unit));
+        assert!(!topcode.in_bullseye(topcode.unit, 0.0));
+        assert!(!topcode.in_bullseye(0.0, topcode.unit));
     }
 }
