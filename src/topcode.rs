@@ -90,13 +90,13 @@ impl TopCode {
             + scanner.y_dist(cx - 1, cy, 1)
             + scanner.y_dist(cx + 1, cy, 1);
 
-        let left = scanner.y_dist(cx, cy, -1)
-            + scanner.y_dist(cx, cy - 1, -1)
-            + scanner.y_dist(cx, cy + 1, -1);
+        let left = scanner.x_dist(cx, cy, -1)
+            + scanner.x_dist(cx, cy - 1, -1)
+            + scanner.x_dist(cx, cy + 1, -1);
 
-        let right = scanner.y_dist(cx, cy, 1)
-            + scanner.y_dist(cx, cy - 1, 1)
-            + scanner.y_dist(cx, cy + 1, 1);
+        let right = scanner.x_dist(cx, cy, 1)
+            + scanner.x_dist(cx, cy - 1, 1)
+            + scanner.x_dist(cx, cy + 1, 1);
 
         self.x = cx as f64;
         self.y = cy as f64;

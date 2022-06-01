@@ -148,7 +148,15 @@ impl Scanner {
         self.candidate_count = 0;
 
         for j in 0..self.height {
-            let mut level = 0;
+            #[repr(u8)]
+            enum RingLevel {
+                WhiteRegion = 0,
+                BlackRegion = 1,
+                WhiteRegionSecond = 2,
+                BlackRegionSecond = 3,
+            }
+
+            let mut level = RingLevel::WhiteRegion;
             let mut b1: isize = 0;
             let mut b2: isize = 0;
             let mut w1: isize = 0;
@@ -186,36 +194,32 @@ impl Scanner {
                 self.data[k] = ((a << 24) + (sum & 0xffffff)) as u32;
 
                 match level {
-                    // On a white region, no black pixels yet.
-                    0 => {
+                    RingLevel::WhiteRegion => {
                         if a == 0 {
                             // First black pixel encountered
-                            level = 1;
+                            level = RingLevel::BlackRegion;
                             b1 = 1;
                             w1 = 0;
                             b2 = 0;
                         }
                     }
-                    // On first black region
-                    1 => {
+                    RingLevel::BlackRegion => {
                         if a == 0 {
                             b1 += 1;
                         } else {
-                            level = 2;
+                            level = RingLevel::WhiteRegionSecond;
                             w1 = 1;
                         }
                     }
-                    // On second white region (bullseye of code?)
-                    2 => {
+                    RingLevel::WhiteRegionSecond => {
                         if a == 0 {
-                            level = 3;
+                            level = RingLevel::BlackRegionSecond;
                             b2 = 1;
                         } else {
                             w1 += 1;
                         }
                     }
-                    // On second black region
-                    3 => {
+                    RingLevel::BlackRegionSecond => {
                         let max_u = self.max_unit as isize;
                         if a == 0 {
                             b2 += 1;
@@ -243,12 +247,8 @@ impl Scanner {
                             b1 = b2;
                             w1 = 1;
                             b2 = 0;
-                            level = 2;
+                            level = RingLevel::WhiteRegionSecond;
                         }
-                    }
-                    _ => {
-                        // TODO: switch out with enum to avoid this arm entirely.
-                        panic!("Invalid level specified");
                     }
                 }
                 if j % 2 == 0 {
@@ -261,11 +261,9 @@ impl Scanner {
     }
 
     /// Scan the image line by line looking for TopCodes.
-    fn find_codes(&mut self) -> Vec<TopCode> {
+    fn find_codes(&self) -> Vec<TopCode> {
         let mut spots = Vec::new();
 
-        // TODO can we make this method take an immutable reference?
-        self.tested_count = 0;
         let mut k = self.width * 2;
         for j in 1..self.height - 2 {
             for i in 0..self.width {
@@ -276,7 +274,6 @@ impl Scanner {
                         && (self.data[k + self.width] & 0x2000000) > 0
                     {
                         if !self.overlaps(&spots, i, j) {
-                            self.tested_count += 1;
                             let mut spot = TopCode::default();
                             spot.decode(&self, i, j);
                             if spot.is_valid() {
@@ -334,7 +331,7 @@ impl Scanner {
     pub(crate) fn x_dist(&self, x: usize, y: usize, d: isize) -> isize {
         let start = self.get_bw_3x3(x, y);
 
-        let mut i = y as isize + d;
+        let mut i = x as isize + d;
 
         loop {
             if i <= 1 || i >= self.width as isize - 1 {
@@ -427,28 +424,28 @@ mod test {
             vec![
                 TopCode {
                     code: Some(55),
-                    unit: 41.8,
-                    orientation: -0.2174948760177549,
-                    x: 1815.0,
+                    unit: 46.725,
+                    orientation: -0.07249829200591831,
+                    x: 1803.0,
                     y: 878.0,
-                    core: [0, 255, 0, 255, 255, 0, 255, 255],
+                    core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(31),
-                    unit: 43.75,
-                    orientation: -0.2174948760177549,
-                    x: 630.0,
+                    unit: 48.675,
+                    orientation: -0.07249829200591831,
+                    x: 618.0,
                     y: 923.0,
-                    core: [0, 255, 0, 255, 255, 0, 255, 255],
+                    core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(93),
-                    unit: 43.75,
+                    unit: 39.9375,
                     orientation: -0.07249829200591831,
-                    x: 1288.0,
+                    x: 1275.1666666666667,
                     y: 1704.0,
-                    core: [0, 255, 0, 255, 255, 0, 255, 255],
-                },
+                    core: [113, 255, 0, 255, 255, 0, 255, 255]
+                }
             ]
         );
     }
@@ -463,27 +460,27 @@ mod test {
             vec![
                 TopCode {
                     code: Some(55),
-                    unit: 23.125,
-                    orientation: 0.12083048667653051,
-                    x: 1006.5,
+                    unit: 22.325,
+                    orientation: -0.07249829200591831,
+                    x: 996.8333333333334,
                     y: 493.5,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(31),
-                    unit: 23.875,
-                    orientation: -0.1691626813471427,
-                    x: 377.0,
+                    unit: 23.0375,
+                    orientation: 0.024166097335306114,
+                    x: 366.5,
                     y: 510.0,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(93),
-                    unit: 23.25,
-                    orientation: 0.024166097335306114,
-                    x: 729.5,
+                    unit: 21.15,
+                    orientation: -0.07249829200591831,
+                    x: 718.8333333333334,
                     y: 929.5,
-                    core: [0, 255, 28, 255, 255, 0, 255, 255]
+                    core: [113, 255, 0, 255, 255, 0, 255, 255]
                 }
             ]
         );
