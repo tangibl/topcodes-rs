@@ -1,3 +1,4 @@
+#[cfg(feature = "visualize")]
 use image::{ImageBuffer, Rgb, RgbImage, RgbaImage};
 
 use crate::topcode::TopCode;
