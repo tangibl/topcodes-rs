@@ -86,8 +86,6 @@ impl Scanner {
 
     /// Binary (thresholded black/white) value for pixel (x, y). Value is either 1 (white) or 0
     /// (black).
-    ///
-    /// TODO: Consider returning an enum/value with a smaller representation here.
     fn get_bw(&self, x: usize, y: usize) -> u32 {
         // TODO: If `threshold` has not been run, this is invalid since the alpha component should
         // contain the thresholded value. We should use type states as mentioned above to avoid
@@ -116,8 +114,6 @@ impl Scanner {
 
     /// Average of thresholded pixels in a 3x3 region around (x, y). Returned value is either 0
     /// (black) or 1 (white).
-    ///
-    /// TODO: Consider returning an enum/value with a smaller representation here.
     pub(crate) fn get_bw_3x3(&self, x: usize, y: usize) -> u32 {
         if x < 1 || x >= self.width - 1 || y < 1 || y >= self.height - 1 {
             return 0;
