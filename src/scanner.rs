@@ -1,3 +1,5 @@
+use image::{ImageBuffer, Rgb, RgbImage, RgbaImage};
+
 use crate::topcode::TopCode;
 
 /// Default maximum width of a TopCode unit in pixels. This is equivalent to 640 pixels.
@@ -380,5 +382,22 @@ impl Scanner {
 
         std::fs::write(format!("{}.ppm", name), data)
             .expect("Failed to write thresholding image with name {name}");
+    }
+
+    #[cfg(feature = "visualize")]
+    pub(crate) fn write_thresholding_image(&self, name: &str) {
+        let img = RgbaImage::from_fn(self.width as u32, self.height as u32, |x, y| {
+            let index = (y * self.width as u32 + x) as usize;
+            let pixel = self.data[index];
+            let (r, g, b, a) = (
+                (pixel >> 24) & 0xff,
+                (pixel >> 16) & 0xff,
+                (pixel >> 8) & 0xff,
+                pixel & 0xff,
+            );
+            image::Rgba([r as u8, g as u8, b as u8, a as u8])
+        });
+        img.save(format!("{}.png", name))
+            .expect("Failed to save png image");
     }
 }
