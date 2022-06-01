@@ -17,11 +17,12 @@ const ARC: f64 = 2.0 * PI / (SECTORS as f64);
 const MAX_PIXELS: usize = 100;
 
 /// An unsigned integer representing a symbol code of a given TopCode. Since TopCodes never exceed
-/// 13 bits in size, a u16 is sufficient.
+/// Valid TopCodes are 13 bits in size, but invalid ones may be more, so this is represented as a
+/// u32.
 ///
 /// This type alias exists simply ensure that if the data type needs to change, this is the only
 /// line of code that should have to change.
-pub type Code = u16;
+pub type Code = u32;
 
 /// TopCodes (Tangible Object Placement Codes) are black-and-white circular fiducials designed to
 /// be recognized quickly by low-resolution digital cameras with poor optics. The TopCode symmbol
@@ -31,7 +32,7 @@ pub type Code = u16;
 ///
 /// Each TopCode encodes a 13-bit number in a single data ring on the outer edge of the symbol.
 /// Zero is represented by a black sector and one is represented by a white sector.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TopCode {
     /// The symbol's code, if valid
     pub code: Option<Code>,
@@ -119,7 +120,7 @@ impl TopCode {
                 let arc_adjustment = a as f64 * ARC * 0.1;
                 let unit = self.unit + (self.unit * 0.05 * u as f64);
                 let c = self.read_code(scanner, unit, arc_adjustment);
-                if (c > max_c) {
+                if c > max_c {
                     max_c = c;
                     max_a = arc_adjustment;
                     max_u = unit;
@@ -186,7 +187,7 @@ impl TopCode {
             c += (self.core[7] as isize * 2 - 0xff).abs() as usize;
 
             // Opposite data ring
-            c += 0xff - (self.core[0] * 2 - 0xff);
+            c += (0xff - (self.core[0] as isize * 2 - 0xff)) as usize;
 
             bit = if self.core[7] > 128 { 1 } else { 0 };
             bits <<= 1;
@@ -353,7 +354,6 @@ mod tests {
     #[test]
     fn point_is_not_in_bullseye() {
         let topcode = TopCode::default();
-        assert!(!topcode.in_bullseye(topcode.unit, 0.0));
-        assert!(!topcode.in_bullseye(0.0, topcode.unit));
+        assert!(!topcode.in_bullseye(topcode.unit, topcode.unit));
     }
 }

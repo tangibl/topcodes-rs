@@ -8,7 +8,7 @@ mod utils;
 
 fn main() {
     let mut scanner = {
-        let img = ImageReader::open("assets/source.png")
+        let img = ImageReader::open("assets/photo.png")
             .unwrap()
             .decode()
             .unwrap();

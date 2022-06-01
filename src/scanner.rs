@@ -400,3 +400,92 @@ impl Scanner {
             .expect("Failed to save png image");
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use image::io::Reader as ImageReader;
+
+    fn create_scanner(asset_name: &str) -> Scanner {
+        let img = ImageReader::open(format!("assets/{}.png", asset_name))
+            .unwrap()
+            .decode()
+            .unwrap();
+        let (width, height) = (img.width() as usize, img.height() as usize);
+        let image_raw = img.into_rgb8().into_raw();
+        let buffer = &image_raw;
+        Scanner::new(buffer, width, height)
+    }
+
+    #[test]
+    fn it_can_scan_a_source_image_accurately() {
+        let mut scanner = create_scanner("source");
+        let topcodes = scanner.scan();
+
+        assert_eq!(
+            topcodes,
+            vec![
+                TopCode {
+                    code: Some(55),
+                    unit: 41.8,
+                    orientation: -0.2174948760177549,
+                    x: 1815.0,
+                    y: 878.0,
+                    core: [0, 255, 0, 255, 255, 0, 255, 255],
+                },
+                TopCode {
+                    code: Some(31),
+                    unit: 43.75,
+                    orientation: -0.2174948760177549,
+                    x: 630.0,
+                    y: 923.0,
+                    core: [0, 255, 0, 255, 255, 0, 255, 255],
+                },
+                TopCode {
+                    code: Some(93),
+                    unit: 43.75,
+                    orientation: -0.07249829200591831,
+                    x: 1288.0,
+                    y: 1704.0,
+                    core: [0, 255, 0, 255, 255, 0, 255, 255],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn it_can_scan_a_photo_accurately() {
+        let mut scanner = create_scanner("photo");
+        let topcodes = scanner.scan();
+
+        assert_eq!(
+            topcodes,
+            vec![
+                TopCode {
+                    code: Some(55),
+                    unit: 23.125,
+                    orientation: 0.12083048667653051,
+                    x: 1006.5,
+                    y: 493.5,
+                    core: [0, 255, 0, 255, 255, 0, 255, 255]
+                },
+                TopCode {
+                    code: Some(31),
+                    unit: 23.875,
+                    orientation: -0.1691626813471427,
+                    x: 377.0,
+                    y: 510.0,
+                    core: [0, 255, 0, 255, 255, 0, 255, 255]
+                },
+                TopCode {
+                    code: Some(93),
+                    unit: 23.25,
+                    orientation: 0.024166097335306114,
+                    x: 729.5,
+                    y: 929.5,
+                    core: [0, 255, 28, 255, 255, 0, 255, 255]
+                }
+            ]
+        );
+    }
+}
