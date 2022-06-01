@@ -160,14 +160,14 @@ impl Scanner {
                 let r = (pixel >> 16) & 0xff;
                 let g = (pixel >> 8) & 0xff;
                 let b = pixel & 0xff;
-                let mut a = (r + g + b) / 3;
+                let mut a: isize = (r + g + b) as isize / 3;
 
                 // Calculate the average sum as an approximate sum of the last s pixels
                 sum += a - (sum / s);
 
                 // Factor in sum from the previous row
                 let threshold = if k >= self.width {
-                    (sum + (self.data[k - self.width] & 0xffffff)) / (2 * s)
+                    (sum + (self.data[k - self.width] as isize & 0xffffff)) / (2 * s)
                 } else {
                     sum / s
                 };
@@ -182,7 +182,7 @@ impl Scanner {
 
                 // Repack pixel data with binary data in the alpha channel, and the running some
                 // for this pixel in the RGB channels.
-                self.data[k] = (a << 24) + (sum & 0xffffff);
+                self.data[k] = ((a << 24) + (sum & 0xffffff)) as u32;
 
                 match level {
                     // On a white region, no black pixels yet.
