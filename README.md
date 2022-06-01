@@ -3,6 +3,28 @@
 This is a direct reimplementation of TopCodes in Rust. The original source by
 Michael Horn can be found [here](https://github.com/TIDAL-Lab/TopCodes).
 
+Using the image crate, the scanner can be used as follows:
+
+```rust
+use image::io::Reader as ImageReader;
+
+let mut scanner = {
+    let img = ImageReader::open("assets/photo.png")
+        .unwrap()
+        .decode()
+        .unwrap();
+    let (width, height) = (img.width() as usize, img.height() as usize);
+    let image_raw = img.into_rgb8().into_raw();
+    let buffer = &image_raw;
+    Scanner::new(buffer, width, height)
+};
+
+let topcodes = scanner.scan();
+```
+
+You are free to use any abstraction as long as you can provide the scanner with
+a reference to the raw image buffer (currently assumes an RGB [u8] slice).
+
 ## Thresholding
 
 For a peak into how the scanner works, we start with an image such as the
