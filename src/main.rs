@@ -18,10 +18,13 @@ fn main() {
         Scanner::new(buffer, width, height)
     };
 
+    #[cfg(feature = "visualize")]
+    scanner.write_thresholding_image("before_thresholding");
+
     let topcodes = scanner.scan();
 
     println!("{:?}", topcodes);
 
     #[cfg(feature = "visualize")]
-    scanner.write_thresholding_image("test")
+    scanner.write_thresholding_image("after_thresholding");
 }

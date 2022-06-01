@@ -39,9 +39,9 @@ impl Scanner {
         let alpha = 0xff000000; // 0xff << 24
         for i in 0..(width * height) {
             let (r, g, b) = (
-                image_buffer[i] as u32,
-                image_buffer[i + 1] as u32,
-                image_buffer[i + 2] as u32,
+                image_buffer[i * 3] as u32,
+                image_buffer[i * 3 + 1] as u32,
+                image_buffer[i * 3 + 2] as u32,
             );
             let element = alpha + (r << 16) + (g << 8) + b;
             data.push(element);
@@ -175,8 +175,7 @@ impl Scanner {
                 };
 
                 // Compare the average sum to current pixel to decide black or white
-                let f = 0.975;
-                a = if (a as f64) < (threshold as f64 * f) {
+                a = if (a as f64) < (threshold as f64 * 0.975) {
                     0
                 } else {
                     1
@@ -389,7 +388,7 @@ impl Scanner {
         let img = RgbaImage::from_fn(self.width as u32, self.height as u32, |x, y| {
             let index = (y * self.width as u32 + x) as usize;
             let pixel = self.data[index];
-            let (r, g, b, a) = (
+            let (a, r, g, b) = (
                 (pixel >> 24) & 0xff,
                 (pixel >> 16) & 0xff,
                 (pixel >> 8) & 0xff,
