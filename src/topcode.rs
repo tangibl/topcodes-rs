@@ -1,4 +1,4 @@
-use std::{f64::consts::PI, fmt::Display};
+use std::f64::consts::PI;
 
 use crate::scanner::Scanner;
 
@@ -13,6 +13,8 @@ const DEFAULT_DIAMETER: f64 = 72.0;
 
 /// Span of a data sector in radians
 const ARC: f64 = 2.0 * PI / (SECTORS as f64);
+
+const MAX_PIXELS: usize = 100;
 
 /// An unsigned integer representing a symbol code of a given TopCode. Since TopCodes never exceed
 /// 13 bits in size, a u16 is sufficient.
@@ -42,7 +44,7 @@ pub struct TopCode {
     /// Vertical center of a symbol
     pub y: f64,
     /// Buffer used to decode sectors
-    pub(crate) core: [isize; WIDTH],
+    pub(crate) core: [usize; WIDTH],
 }
 
 impl Default for TopCode {
@@ -79,14 +81,125 @@ impl TopCode {
 
     /// Decodes a symbol given any point (cx, by) inside the center circle (bullseye) of the code.
     pub fn decode(&mut self, scanner: &Scanner, cx: usize, cy: usize) -> Option<Code> {
-        todo!()
+        let up = scanner.y_dist(cx, cy, -1)
+            + scanner.y_dist(cx - 1, cy, -1)
+            + scanner.y_dist(cx + 1, cy, -1);
+
+        let down = scanner.y_dist(cx, cy, 1)
+            + scanner.y_dist(cx - 1, cy, 1)
+            + scanner.y_dist(cx + 1, cy, 1);
+
+        let left = scanner.y_dist(cx, cy, -1)
+            + scanner.y_dist(cx, cy - 1, -1)
+            + scanner.y_dist(cx, cy + 1, -1);
+
+        let right = scanner.y_dist(cx, cy, 1)
+            + scanner.y_dist(cx, cy - 1, 1)
+            + scanner.y_dist(cx, cy + 1, 1);
+
+        self.x = cx as f64;
+        self.y = cy as f64;
+        self.x += (right - left) as f64 / 6.0;
+        self.y += (down - up) as f64 / 6.0;
+        self.code = None;
+        self.unit = self.read_unit(scanner); // Try to make this an option. Consider a valid vs. invalid TopCode enum.
+
+        if self.unit < 0.0 {
+            return None;
+        }
+
+        let mut max_c = 0;
+        let mut max_a = 0.0;
+        let mut max_u = 0.0;
+
+        // Try different unit and arc adjustments. Save the one that produces a maximum confidence
+        // reading....
+        for u in -2..=2 {
+            for a in 0..10 {
+                let arc_adjustment = a as f64 * ARC * 0.1;
+                let unit = self.unit + (self.unit * 0.05 * u as f64);
+                let c = self.read_code(scanner, unit, arc_adjustment);
+                if (c > max_c) {
+                    max_c = c;
+                    max_a = arc_adjustment;
+                    max_u = unit;
+                }
+            }
+        }
+
+        // One last call to [read_code] to reset orientation and code.
+        if max_c > 0 {
+            self.unit = max_u;
+            self.read_code(scanner, self.unit, max_a);
+            self.code = self.code.map(|code| self.rotate_lowest(code, max_a));
+        }
+
+        self.code
     }
 
     /// Attempts to decode the binary pixels of an image into a code value.
     ///
     /// The `unit` is the width of a single ring and `arc_adjustment` corrects the rotation.
-    fn read_code(scanner: &Scanner, unit: f64, arc_adjustment: f64) -> Option<Code> {
-        todo!()
+    fn read_code(&mut self, scanner: &Scanner, unit: f64, arc_adjustment: f64) -> usize {
+        let mut c = 0;
+        let mut bit = 0;
+        let mut bits = 0;
+
+        for sector in (0..SECTORS).rev() {
+            let sector_f = sector as f64;
+            let dx = (ARC * sector_f + arc_adjustment).cos();
+            let dy = (ARC * sector_f + arc_adjustment).sin();
+
+            // Take 8 samples across the diameter of the symbol
+            for i in 0..WIDTH {
+                let i_f = i as f64;
+                let dist = (i_f - 3.5) * unit;
+
+                let sx = (self.x + dx * dist).round() as usize;
+                let sy = (self.y + dy * dist).round() as usize;
+                self.core[i] = scanner.get_sample_3x3(sx, sy);
+            }
+
+            // White rings
+            if self.core[1] <= 128
+                || self.core[3] <= 128
+                || self.core[4] <= 128
+                || self.core[6] <= 128
+            {
+                return 0;
+            }
+
+            // Black ring
+            if self.core[2] > 128 || self.core[5] > 128 {
+                return 0;
+            }
+
+            // Compute confidence interval in core sample
+            c += self.core[1] // White rings
+                + self.core[3]
+                + self.core[4]
+                + self.core[6]
+                + (0xff - self.core[2]) // Black ring
+                + (0xff - self.core[5]);
+
+            // Data rings
+            c += (self.core[7] as isize * 2 - 0xff).abs() as usize;
+
+            // Opposite data ring
+            c += 0xff - (self.core[0] * 2 - 0xff);
+
+            bit = if self.core[7] > 128 { 1 } else { 0 };
+            bits <<= 1;
+            bits += bit;
+        }
+
+        return if Self::checksum(bits) {
+            self.code = Some(bits);
+            c
+        } else {
+            self.code = None;
+            0
+        };
     }
 
     /// Tries each of the possible rotations and returns the lowest.
@@ -130,13 +243,80 @@ impl TopCode {
     /// Determines the symbol's unit length by counting the number of pixels between the outer
     /// edges of the first black ring. North, south, east, and west readings are taken and the
     /// average is returned.
-    fn read_unit(scanner: &Scanner) -> f64 {
-        todo!()
-    }
+    fn read_unit(&self, scanner: &Scanner) -> f64 {
+        let sx = self.x.round() as usize;
+        let sy = self.y.round() as usize;
 
-    #[cfg(feature = "visualize")]
-    pub fn annotate(&self) {
-        unimplemented!()
+        let image_width = scanner.image_width();
+        let image_height = scanner.image_height();
+
+        let mut white_left = true;
+        let mut white_right = true;
+        let mut white_up = true;
+        let mut white_down = true;
+
+        let mut dist_left = 0;
+        let mut dist_right = 0;
+        let mut dist_up = 0;
+        let mut dist_down = 0;
+
+        for i in 1..=MAX_PIXELS {
+            if sx - i < 1 || sx + i >= image_height - 1 || sy - i < 1 || sy + i >= image_height - 1
+            {
+                return -1.0;
+            }
+
+            // Left sample
+            let sample = scanner.get_bw_3x3(sx - i, sy);
+            if dist_left <= 0 {
+                if white_left && sample == 0 {
+                    white_left = false
+                } else if !white_left && sample == 1 {
+                    dist_left = i as isize;
+                }
+            }
+
+            // Right sample
+            let sample = scanner.get_bw_3x3(sx + i, sy);
+            if dist_right <= 0 {
+                if white_right && sample == 0 {
+                    white_right = false
+                } else if !white_right && sample == 1 {
+                    dist_right = i as isize;
+                }
+            }
+
+            // Up sample
+            let sample = scanner.get_bw_3x3(sx, sy - i);
+            if dist_up <= 0 {
+                if white_up && sample == 0 {
+                    white_up = false
+                } else if !white_up && sample == 1 {
+                    dist_up = i as isize;
+                }
+            }
+
+            // Down sample
+            let sample = scanner.get_bw_3x3(sx, sy + i);
+            if dist_down <= 0 {
+                if white_down && sample == 0 {
+                    white_down = false
+                } else if !white_down && sample == 1 {
+                    dist_down = i as isize;
+                }
+            }
+
+            if dist_right > 0 && dist_left > 0 && dist_up > 0 && dist_down > 0 {
+                let u = (dist_right + dist_left + dist_up + dist_down) as f64 / 8.0;
+                return if (dist_right + dist_left - dist_up - dist_down).abs() as f64 > u {
+                    -1.0
+                } else {
+                    u
+                };
+            }
+        }
+
+        -1.0
     }
 
     /// A method used to draw the current TopCode. This should only be conditionally compiled for

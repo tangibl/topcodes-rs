@@ -7,9 +7,7 @@ const DEFAULT_MAX_UNIT: usize = 80;
 /// one horizontal line at a time) looking for TopCode bullseye patterns.  If the pattern matches
 /// and the black and white regions meet certain ratio constraints, then the pixel is tested as the
 /// center of a candidate TopCode.
-pub struct Scanner<'a> {
-    /// A raw buffer representing the source image in the RGB8 format. 8-bits per channel.
-    image_buffer: &'a [u8],
+pub struct Scanner {
     /// Image width
     width: usize,
     /// Image height
@@ -24,8 +22,8 @@ pub struct Scanner<'a> {
     max_unit: usize,
 }
 
-impl<'a> Scanner<'a> {
-    pub fn new(image_buffer: &'a [u8], width: usize, height: usize) -> Self {
+impl Scanner {
+    pub fn new(image_buffer: &[u8], width: usize, height: usize) -> Self {
         debug_assert!(
             image_buffer.len() == width * height * 3,
             "Scanner received an image buffer (size={}) that did not match the provided width ({}) and height ({})",
@@ -48,7 +46,6 @@ impl<'a> Scanner<'a> {
         }
 
         Self {
-            image_buffer,
             width,
             height,
             data,
@@ -58,12 +55,19 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    pub fn image_width(&self) -> usize {
+        self.width
+    }
+
+    pub fn image_height(&self) -> usize {
+        self.height
+    }
+
     /// Scan the image and return a list of all TopCodes found in it.
-    ///
-    /// TODO: This process mutates the scanner. Consider creating an intermediate struct for this
-    /// process so that the scanner can be held as an immutable reference, even when scanning.
-    fn scan(&mut self) {
-        todo!()
+    pub fn scan(&mut self) -> Vec<TopCode> {
+        // TODO: move this out into the constructor to make scanning an immutable call.
+        self.threshold();
+        self.find_codes()
     }
 
     /// Sets the maximum allowable diameter (in pixels) for a TopCode identified by the scanner.
@@ -91,7 +95,7 @@ impl<'a> Scanner<'a> {
 
     /// Average of thresholded pixels in a 3x3 region around (x, y). Returned value is between 0
     /// (black) and 255 (white).
-    fn get_sample_3x3(&self, x: usize, y: usize) -> u8 {
+    pub(crate) fn get_sample_3x3(&self, x: usize, y: usize) -> usize {
         if x < 1 || x >= self.width - 1 || y < 1 || y >= self.height - 1 {
             return 0;
         }
@@ -104,14 +108,14 @@ impl<'a> Scanner<'a> {
             }
         }
 
-        return (sum / 9) as u8;
+        return (sum / 9) as usize;
     }
 
     /// Average of thresholded pixels in a 3x3 region around (x, y). Returned value is either 0
     /// (black) or 1 (white).
     ///
     /// TODO: Consider returning an enum/value with a smaller representation here.
-    fn get_bw_3x3(&self, x: usize, y: usize) -> u32 {
+    pub(crate) fn get_bw_3x3(&self, x: usize, y: usize) -> u32 {
         if x < 1 || x >= self.width - 1 || y < 1 || y >= self.height - 1 {
             return 0;
         }
@@ -137,7 +141,122 @@ impl<'a> Scanner<'a> {
     /// "Adaptive Thresholding for the DigitalDesk"
     /// EuroPARC Technical Report EPC-93-110
     fn threshold(&mut self) {
-        todo!()
+        let mut sum = 128;
+        let mut s = 30;
+        self.candidate_count = 0;
+
+        for j in 0..self.height {
+            let mut level = 0;
+            let mut b1: isize = 0;
+            let mut b2: isize = 0;
+            let mut w1: isize = 0;
+
+            let mut k = if j % 2 == 0 { 0 } else { self.width - 1 };
+            k += j * self.width;
+
+            for i in 0..self.width {
+                // Calculate pixel intensity (0-255)
+                let pixel = self.data[k];
+                let r = (pixel >> 16) & 0xff;
+                let g = (pixel >> 8) & 0xff;
+                let b = pixel & 0xff;
+                let mut a = (r + g + b) / 3;
+
+                // Calculate the average sum as an approximate sum of the last s pixels
+                sum += a - (sum / s);
+
+                // Factor in sum from the previous row
+                let threshold = if k >= self.width {
+                    (sum + (self.data[k - self.width] & 0xffffff)) / (2 * s)
+                } else {
+                    sum / s
+                };
+
+                // Compare the average sum to current pixel to decide black or white
+                let f = 0.975;
+                a = if (a as f64) < (threshold as f64 * f) {
+                    0
+                } else {
+                    1
+                };
+
+                // Repack pixel data with binary data in the alpha channel, and the running some
+                // for this pixel in the RGB channels.
+                self.data[k] = (a << 24) + (sum & 0xffffff);
+
+                match level {
+                    // On a white region, no black pixels yet.
+                    0 => {
+                        if a == 0 {
+                            // First black pixel encountered
+                            level = 1;
+                            b1 = 1;
+                            w1 = 0;
+                            b2 = 0;
+                        }
+                    }
+                    // On first black region
+                    1 => {
+                        if a == 0 {
+                            b1 += 1;
+                        } else {
+                            level = 2;
+                            w1 = 1;
+                        }
+                    }
+                    // On second white region (bullseye of code?)
+                    2 => {
+                        if a == 0 {
+                            level = 3;
+                            b2 = 1;
+                        } else {
+                            w1 += 1;
+                        }
+                    }
+                    // On second black region
+                    3 => {
+                        let max_u = self.max_unit as isize;
+                        if a == 0 {
+                            b2 += 1;
+                        } else {
+                            if b1 >= 2
+                                && b2 >= 2
+                                && b1 <= max_u
+                                && b2 <= max_u
+                                && w1 <= (max_u + max_u)
+                                && (b1 + b2 - w1).abs() <= (b1 + b2)
+                                && (b1 + b2 - w1).abs() <= w1
+                                && (b1 - b2).abs() <= b1
+                                && (b1 - b2).abs() <= b2
+                            {
+                                let mask = 0x2000000;
+
+                                let mut dk: usize = 1 + b2 as usize + w1 as usize / 2;
+                                dk = if j % 2 == 0 { k - dk } else { k + dk };
+
+                                self.data[dk - 1] |= mask;
+                                self.data[dk] |= mask;
+                                self.data[dk + 1] |= mask;
+                                self.candidate_count += 3;
+                            }
+                            b1 = b2;
+                            w1 = 1;
+                            b2 = 0;
+                            level = 2;
+                        }
+                    }
+                    _ => {
+                        // TODO: switch out with enum to avoid this arm entirely.
+                        panic!("Invalid level specified");
+                    }
+                }
+                if j % 2 == 0 {
+                    k += 1
+                } else {
+                    k -= 1
+                };
+            }
+        }
     }
 
     /// Scan the image line by line looking for TopCodes.
@@ -149,11 +268,11 @@ impl<'a> Scanner<'a> {
         let mut k = self.width * 2;
         for j in 1..self.height - 2 {
             for i in 0..self.width {
-                if (self.data[k] & 0x20000000) > 0 {
-                    if (self.data[k - 1] & 0x20000000) > 0
-                        && (self.data[k + 1] & 0x20000000) > 0
-                        && (self.data[k - self.width] & 0x20000000) > 0
-                        && (self.data[k + self.width] & 0x20000000) > 0
+                if (self.data[k] & 0x2000000) > 0 {
+                    if (self.data[k - 1] & 0x2000000) > 0
+                        && (self.data[k + 1] & 0x2000000) > 0
+                        && (self.data[k - self.width] & 0x2000000) > 0
+                        && (self.data[k + self.width] & 0x2000000) > 0
                     {
                         if !self.overlaps(&spots, i, j) {
                             self.tested_count += 1;
@@ -183,35 +302,59 @@ impl<'a> Scanner<'a> {
     }
 
     /// Counts the number of vertical pixels from (x, y) until a color change is perceived.
-    fn y_dist(&self, x: usize, y: usize, d: usize) -> Option<usize> {
+    pub(crate) fn y_dist(&self, x: usize, y: usize, d: isize) -> isize {
         let start = self.get_bw_3x3(x, y);
 
-        let start_range = (y + d).max(1);
+        let mut j = y as isize + d;
 
-        for j in (start_range..self.height - 1).step_by(d) {
-            let sample = self.get_bw_3x3(x, j);
-            if start + sample == 1 {
-                return Some(if d > 0 { j - y } else { y - j });
+        loop {
+            if j <= 1 || j >= self.height as isize - 1 {
+                break;
             }
+
+            let j_u = j as usize;
+
+            let sample = self.get_bw_3x3(x, j_u);
+            if start + sample == 1 {
+                return if d > 0 {
+                    j - y as isize
+                } else {
+                    y as isize - j
+                };
+            }
+
+            j += d;
         }
 
-        None
+        -1
     }
 
     /// Counts the number of horizontal pixels from (x, y) until a color change is perceived.
-    fn x_dist(&self, x: usize, y: usize, d: usize) -> Option<usize> {
+    pub(crate) fn x_dist(&self, x: usize, y: usize, d: isize) -> isize {
         let start = self.get_bw_3x3(x, y);
 
-        let start_range = (x + d).max(1);
+        let mut i = y as isize + d;
 
-        for i in (start_range..self.width - 1).step_by(d) {
-            let sample = self.get_bw_3x3(i, y);
-            if start + sample == 1 {
-                return Some(if d > 0 { i - x } else { x - i });
+        loop {
+            if i <= 1 || i >= self.width as isize - 1 {
+                break;
             }
+
+            let i_u = i as usize;
+
+            let sample = self.get_bw_3x3(i_u, y);
+            if start + sample == 1 {
+                return if d > 0 {
+                    i - x as isize
+                } else {
+                    x as isize - i
+                };
+            }
+
+            i += d;
         }
 
-        None
+        -1
     }
 
     /// For debugging purposes, create a black and white image that shows the result of adaptive
