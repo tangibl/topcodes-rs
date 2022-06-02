@@ -19,8 +19,6 @@ pub struct Scanner {
     data: Vec<u32>,
     /// Candidate code count
     candidate_count: usize,
-    /// Number of candidates tested
-    tested_count: usize,
     /// Maximum width of a TopCode unit in pixels
     max_unit: usize,
 }
@@ -53,7 +51,6 @@ impl Scanner {
             height,
             data,
             candidate_count: 0,
-            tested_count: 0,
             max_unit: DEFAULT_MAX_UNIT,
         }
     }
@@ -141,7 +138,7 @@ impl Scanner {
     /// EuroPARC Technical Report EPC-93-110
     fn threshold(&mut self) {
         let mut sum = 128;
-        let mut s = 30;
+        let s = 30;
         self.candidate_count = 0;
 
         for j in 0..self.height {
@@ -161,7 +158,7 @@ impl Scanner {
             let mut k = if j % 2 == 0 { 0 } else { self.width - 1 };
             k += j * self.width;
 
-            for i in 0..self.width {
+            for _i in 0..self.width {
                 // Calculate pixel intensity (0-255)
                 let pixel = self.data[k];
                 let r = (pixel >> 16) & 0xff;
@@ -352,33 +349,8 @@ impl Scanner {
         -1
     }
 
-    /// For debugging purposes, create a black and white image that shows the result of adaptive
-    /// thresholding.
-    pub(crate) fn write_thresholding_ppm(&self, name: &str) {
-        let mut data = String::new();
-
-        // Magic string for identifying file type (plain PPM)
-        data.push_str("P3\n");
-
-        // Dimensions
-        data.push_str(&format!("{}\t{}\n", self.width, self.height));
-
-        // Maximum color value (between 0 and 65536)
-        data.push_str("255\n");
-
-        for value in &self.data {
-            let r = (value >> 16) & 0xff;
-            let g = (value >> 8) & 0xff;
-            let b = value & 0xff;
-            data.push_str(&format!("{} {} {}\n", r, g, b));
-        }
-
-        std::fs::write(format!("{}.ppm", name), data)
-            .expect("Failed to write thresholding image with name {name}");
-    }
-
     #[cfg(feature = "visualize")]
-    pub(crate) fn write_thresholding_image(&self, name: &str) {
+    pub fn write_thresholding_image(&self, name: &str) {
         let img = RgbaImage::from_fn(self.width as u32, self.height as u32, |x, y| {
             let index = (y * self.width as u32 + x) as usize;
             let pixel = self.data[index];

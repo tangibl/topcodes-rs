@@ -1,11 +1,7 @@
-use crate::scanner::Scanner;
+use topcodes::scanner::Scanner;
 
 #[cfg(feature = "visualize")]
 use image::io::Reader as ImageReader;
-
-mod scanner;
-mod topcode;
-mod utils;
 
 fn main() {
     #[cfg(feature = "visualize")]
@@ -23,9 +19,7 @@ fn main() {
 
         scanner.write_thresholding_image("before_thresholding");
 
-        let topcodes = scanner.scan();
-
-        println!("{:?}", topcodes);
+        let _topcodes = scanner.scan();
 
         scanner.write_thresholding_image("after_thresholding");
     }
