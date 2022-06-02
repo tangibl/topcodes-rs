@@ -75,28 +75,18 @@ impl TopCode {
         self.y = y;
     }
 
-    /// Returns true if the code was successfully decoded.
+    /// Returns true if the code was successfully decoded and is not too close to the edges of the
+    /// image.
     pub fn is_valid(&self) -> bool {
         self.code.is_some()
     }
 
     /// Decodes a symbol given any point (cx, by) inside the center circle (bullseye) of the code.
     pub fn decode(&mut self, scanner: &Scanner, cx: usize, cy: usize) -> Option<Code> {
-        let up = scanner.y_dist(cx, cy, -1)
-            + scanner.y_dist(cx - 1, cy, -1)
-            + scanner.y_dist(cx + 1, cy, -1);
-
-        let down = scanner.y_dist(cx, cy, 1)
-            + scanner.y_dist(cx - 1, cy, 1)
-            + scanner.y_dist(cx + 1, cy, 1);
-
-        let left = scanner.x_dist(cx, cy, -1)
-            + scanner.x_dist(cx, cy - 1, -1)
-            + scanner.x_dist(cx, cy + 1, -1);
-
-        let right = scanner.x_dist(cx, cy, 1)
-            + scanner.x_dist(cx, cy - 1, 1)
-            + scanner.x_dist(cx, cy + 1, 1);
+        let up = scanner.dist(cx, cy, 0, -1);
+        let down = scanner.dist(cx, cy, 0, 1);
+        let left = scanner.dist(cx, cy, -1, 0);
+        let right = scanner.dist(cx, cy, 1, 0);
 
         self.x = cx as f64;
         self.y = cy as f64;
@@ -262,8 +252,7 @@ impl TopCode {
         let mut dist_down = 0;
 
         for i in 1..=MAX_PIXELS {
-            if sx - i < 1 || sx + i >= image_height - 1 || sy - i < 1 || sy + i >= image_height - 1
-            {
+            if sx < 1 + i || sx + i >= image_width - 1 || sy < 1 + i || sy + i >= image_height - 1 {
                 return -1.0;
             }
 

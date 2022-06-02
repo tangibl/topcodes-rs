@@ -1,19 +1,27 @@
 #[cfg(feature = "visualize")]
 use image::{ImageBuffer, Rgb, RgbImage, RgbaImage};
 
-use crate::topcode::TopCode;
+use crate::{candidate::Candidate, topcode::TopCode};
 
-/// Default maximum width of a TopCode unit in pixels. This is equivalent to 640 pixels.
+/// Default maximum width of a TopCode unit/ring in pixels. This is equivalent to 640 pixels.
 const DEFAULT_MAX_UNIT: usize = 80;
+
+#[repr(u8)]
+enum UnitLevel {
+    WhiteRegion = 0,
+    BlackRegion = 1,
+    WhiteRegionSecond = 2,
+    BlackRegionSecond = 3,
+}
 
 /// Loads and scans images for TopCodes.  The algorithm does a single sweep of an image (scanning
 /// one horizontal line at a time) looking for TopCode bullseye patterns.  If the pattern matches
 /// and the black and white regions meet certain ratio constraints, then the pixel is tested as the
 /// center of a candidate TopCode.
 pub struct Scanner {
-    /// Image width
+    /// Expected image width
     width: usize,
-    /// Image height
+    /// Expected image height
     height: usize,
     /// Holds processed binary pixel data as a single u32 in the ARGB format.
     data: Vec<u32>,
@@ -66,8 +74,8 @@ impl Scanner {
     /// Scan the image and return a list of all TopCodes found in it.
     pub fn scan(&mut self) -> Vec<TopCode> {
         // TODO: move this out into the constructor to make scanning an immutable call.
-        self.threshold();
-        self.find_codes()
+        let candidates = self.threshold();
+        self.find_codes(&candidates)
     }
 
     /// Sets the maximum allowable diameter (in pixels) for a TopCode identified by the scanner.
@@ -136,21 +144,13 @@ impl Scanner {
     ///
     /// "Adaptive Thresholding for the DigitalDesk"
     /// EuroPARC Technical Report EPC-93-110
-    fn threshold(&mut self) {
+    fn threshold(&mut self) -> Vec<Candidate> {
+        let mut candidates = Vec::with_capacity(50);
         let mut sum = 128;
         let s = 30;
-        self.candidate_count = 0;
 
         for j in 0..self.height {
-            #[repr(u8)]
-            enum RingLevel {
-                WhiteRegion = 0,
-                BlackRegion = 1,
-                WhiteRegionSecond = 2,
-                BlackRegionSecond = 3,
-            }
-
-            let mut level = RingLevel::WhiteRegion;
+            let mut level = UnitLevel::WhiteRegion;
             let mut b1: isize = 0;
             let mut b2: isize = 0;
             let mut w1: isize = 0;
@@ -188,32 +188,32 @@ impl Scanner {
                 self.data[k] = ((a << 24) + (sum & 0xffffff)) as u32;
 
                 match level {
-                    RingLevel::WhiteRegion => {
+                    UnitLevel::WhiteRegion => {
                         if a == 0 {
                             // First black pixel encountered
-                            level = RingLevel::BlackRegion;
+                            level = UnitLevel::BlackRegion;
                             b1 = 1;
                             w1 = 0;
                             b2 = 0;
                         }
                     }
-                    RingLevel::BlackRegion => {
+                    UnitLevel::BlackRegion => {
                         if a == 0 {
                             b1 += 1;
                         } else {
-                            level = RingLevel::WhiteRegionSecond;
+                            level = UnitLevel::WhiteRegionSecond;
                             w1 = 1;
                         }
                     }
-                    RingLevel::WhiteRegionSecond => {
+                    UnitLevel::WhiteRegionSecond => {
                         if a == 0 {
-                            level = RingLevel::BlackRegionSecond;
+                            level = UnitLevel::BlackRegionSecond;
                             b2 = 1;
                         } else {
                             w1 += 1;
                         }
                     }
-                    RingLevel::BlackRegionSecond => {
+                    UnitLevel::BlackRegionSecond => {
                         let max_u = self.max_unit as isize;
                         if a == 0 {
                             b2 += 1;
@@ -228,20 +228,15 @@ impl Scanner {
                                 && (b1 - b2).abs() <= b1
                                 && (b1 - b2).abs() <= b2
                             {
-                                let mask = 0x2000000;
-
-                                let mut dk: usize = 1 + b2 as usize + w1 as usize / 2;
+                                let mut dk: usize = 1 + b2 as usize + (w1 as usize >> 1);
                                 dk = if j % 2 == 0 { k - dk } else { k + dk };
 
-                                self.data[dk - 1] |= mask;
-                                self.data[dk] |= mask;
-                                self.data[dk + 1] |= mask;
-                                self.candidate_count += 3;
+                                candidates.push(Candidate::new(dk % self.width, j));
                             }
                             b1 = b2;
                             w1 = 1;
                             b2 = 0;
-                            level = RingLevel::WhiteRegionSecond;
+                            level = UnitLevel::WhiteRegionSecond;
                         }
                     }
                 }
@@ -252,31 +247,21 @@ impl Scanner {
                 };
             }
         }
+
+        candidates
     }
 
     /// Scan the image line by line looking for TopCodes.
-    fn find_codes(&self) -> Vec<TopCode> {
-        let mut spots = Vec::new();
+    fn find_codes(&self, candidates: &Vec<Candidate>) -> Vec<TopCode> {
+        let mut spots = Vec::with_capacity(candidates.len());
 
-        let mut k = self.width * 2;
-        for j in 1..self.height - 2 {
-            for i in 0..self.width {
-                if (self.data[k] & 0x2000000) > 0 {
-                    if (self.data[k - 1] & 0x2000000) > 0
-                        && (self.data[k + 1] & 0x2000000) > 0
-                        && (self.data[k - self.width] & 0x2000000) > 0
-                        && (self.data[k + self.width] & 0x2000000) > 0
-                    {
-                        if !self.overlaps(&spots, i, j) {
-                            let mut spot = TopCode::default();
-                            spot.decode(&self, i, j);
-                            if spot.is_valid() {
-                                spots.push(spot);
-                            }
-                        }
-                    }
+        for c in candidates {
+            if !self.overlaps(&spots, c.x, c.y) {
+                let mut spot = TopCode::default();
+                spot.decode(&self, c.x, c.y);
+                if spot.is_valid() {
+                    spots.push(spot);
                 }
-                k += 1;
             }
         }
 
@@ -293,57 +278,27 @@ impl Scanner {
         false
     }
 
-    /// Counts the number of vertical pixels from (x, y) until a color change is perceived.
-    pub(crate) fn y_dist(&self, x: usize, y: usize, d: isize) -> isize {
+    /// Counts the number of pixels from (x, y) until a color change is perceived.
+    pub(crate) fn dist(&self, x: usize, y: usize, dx: isize, dy: isize) -> isize {
         let start = self.get_bw_3x3(x, y);
 
-        let mut j = y as isize + d;
+        let mut i = x as isize + dx;
+        let mut j = y as isize + dy;
 
         loop {
-            if j <= 1 || j >= self.height as isize - 1 {
+            if i <= 1 || i >= self.width as isize - 1 || j <= 1 || j >= self.height as isize {
                 break;
             }
 
-            let j_u = j as usize;
-
-            let sample = self.get_bw_3x3(x, j_u);
+            let sample = self.get_bw_3x3(i as usize, j as usize);
             if start + sample == 1 {
-                return if d > 0 {
-                    j - y as isize
-                } else {
-                    y as isize - j
-                };
+                let x_dist = (i - x as isize).abs();
+                let y_dist = (j - y as isize).abs();
+                return (x_dist + y_dist) >> 1;
             }
 
-            j += d;
-        }
-
-        -1
-    }
-
-    /// Counts the number of horizontal pixels from (x, y) until a color change is perceived.
-    pub(crate) fn x_dist(&self, x: usize, y: usize, d: isize) -> isize {
-        let start = self.get_bw_3x3(x, y);
-
-        let mut i = x as isize + d;
-
-        loop {
-            if i <= 1 || i >= self.width as isize - 1 {
-                break;
-            }
-
-            let i_u = i as usize;
-
-            let sample = self.get_bw_3x3(i_u, y);
-            if start + sample == 1 {
-                return if d > 0 {
-                    i - x as isize
-                } else {
-                    x as isize - i
-                };
-            }
-
-            i += d;
+            i += dx;
+            j += dy;
         }
 
         -1
@@ -393,27 +348,27 @@ mod test {
             vec![
                 TopCode {
                     code: Some(55),
-                    unit: 46.725,
+                    unit: 42.15625,
                     orientation: -0.07249829200591831,
                     x: 1803.0,
-                    y: 878.0,
+                    y: 868.0,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(31),
-                    unit: 48.675,
+                    unit: 41.91875,
                     orientation: -0.07249829200591831,
                     x: 618.0,
-                    y: 923.0,
+                    y: 912.1666666666666,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(93),
-                    unit: 39.9375,
+                    unit: 42.0375,
                     orientation: -0.07249829200591831,
-                    x: 1275.1666666666667,
-                    y: 1704.0,
-                    core: [113, 255, 0, 255, 255, 0, 255, 255]
+                    x: 1276.0,
+                    y: 1693.1666666666667,
+                    core: [0, 255, 0, 255, 255, 0, 255, 255]
                 }
             ]
         );
@@ -429,27 +384,27 @@ mod test {
             vec![
                 TopCode {
                     code: Some(55),
-                    unit: 22.325,
-                    orientation: -0.07249829200591831,
-                    x: 996.8333333333334,
-                    y: 493.5,
+                    unit: 23.25,
+                    orientation: -0.12083048667653051,
+                    x: 997.0,
+                    y: 483.0,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(31),
-                    unit: 23.0375,
-                    orientation: 0.024166097335306114,
-                    x: 366.5,
-                    y: 510.0,
+                    unit: 24.0,
+                    orientation: -0.07249829200591831,
+                    x: 367.0,
+                    y: 499.1666666666667,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(93),
-                    unit: 21.15,
+                    unit: 23.25,
                     orientation: -0.07249829200591831,
-                    x: 718.8333333333334,
-                    y: 929.5,
-                    core: [113, 255, 0, 255, 255, 0, 255, 255]
+                    x: 719.0,
+                    y: 919.0,
+                    core: [0, 255, 0, 255, 255, 0, 255, 255]
                 }
             ]
         );
