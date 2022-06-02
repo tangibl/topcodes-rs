@@ -8,18 +8,17 @@ Using the image crate, the scanner can be used as follows:
 ```rust
 use image::io::Reader as ImageReader;
 
-let mut scanner = {
+let (mut scanner, buffer) = {
     let img = ImageReader::open("assets/photo.png")
         .unwrap()
         .decode()
         .unwrap();
     let (width, height) = (img.width() as usize, img.height() as usize);
-    let image_raw = img.into_rgb8().into_raw();
-    let buffer = &image_raw;
-    Scanner::new(buffer, width, height)
+    let buffer = img.into_rgb8().into_raw();
+    (Scanner::new(width, height), buffer)
 };
 
-let topcodes = scanner.scan();
+let topcodes = scanner.scan(buffer);
 ```
 
 You are free to use any abstraction as long as you can provide the scanner with

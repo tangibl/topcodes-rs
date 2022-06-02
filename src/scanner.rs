@@ -18,6 +18,7 @@ enum UnitLevel {
 /// one horizontal line at a time) looking for TopCode bullseye patterns.  If the pattern matches
 /// and the black and white regions meet certain ratio constraints, then the pixel is tested as the
 /// center of a candidate TopCode.
+#[derive(Clone)]
 pub struct Scanner {
     /// Expected image width
     width: usize,
@@ -32,32 +33,11 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn new(image_buffer: &[u8], width: usize, height: usize) -> Self {
-        debug_assert!(
-            image_buffer.len() == width * height * 3,
-            "Scanner received an image buffer (size={}) that did not match the provided width ({}) and height ({})",
-            image_buffer.len(),
-            width,
-            height
-        );
-
-        let mut data: Vec<u32> = Vec::with_capacity(width * height);
-        // All pixels assumed to be opaque.
-        let alpha = 0xff000000; // 0xff << 24
-        for i in 0..(width * height) {
-            let (r, g, b) = (
-                image_buffer[i * 3] as u32,
-                image_buffer[i * 3 + 1] as u32,
-                image_buffer[i * 3 + 2] as u32,
-            );
-            let element = alpha + (r << 16) + (g << 8) + b;
-            data.push(element);
-        }
-
+    pub fn new(width: usize, height: usize) -> Self {
         Self {
             width,
             height,
-            data,
+            data: vec![0; width * height],
             candidate_count: 0,
             max_unit: DEFAULT_MAX_UNIT,
         }
@@ -72,8 +52,26 @@ impl Scanner {
     }
 
     /// Scan the image and return a list of all TopCodes found in it.
-    pub fn scan(&mut self) -> Vec<TopCode> {
-        // TODO: move this out into the constructor to make scanning an immutable call.
+    pub fn scan(&mut self, image_buffer: &[u8]) -> Vec<TopCode> {
+        debug_assert!(
+            image_buffer.len() == self.width * self.height * 3,
+            "Scanner received an image buffer (size={}) that did not match the provided width ({}) and height ({})",
+            image_buffer.len(),
+            self.width,
+            self.height
+        );
+
+        // All pixels assumed to be opaque.
+        let alpha = 0xff000000; // 0xff << 24
+        for i in 0..self.data.len() {
+            let (r, g, b) = (
+                image_buffer[i * 3] as u32,
+                image_buffer[i * 3 + 1] as u32,
+                image_buffer[i * 3 + 2] as u32,
+            );
+            let element = alpha + (r << 16) + (g << 8) + b;
+            self.data[i] = element;
+        }
         let candidates = self.threshold();
         self.find_codes(&candidates)
     }
@@ -327,21 +325,20 @@ mod test {
     use super::*;
     use image::io::Reader as ImageReader;
 
-    fn create_scanner(asset_name: &str) -> Scanner {
+    fn create_scanner_and_buffer(asset_name: &str) -> (Scanner, Vec<u8>) {
         let img = ImageReader::open(format!("assets/{}.png", asset_name))
             .unwrap()
             .decode()
             .unwrap();
         let (width, height) = (img.width() as usize, img.height() as usize);
         let image_raw = img.into_rgb8().into_raw();
-        let buffer = &image_raw;
-        Scanner::new(buffer, width, height)
+        (Scanner::new(width, height), image_raw)
     }
 
     #[test]
     fn it_can_scan_a_source_image_accurately() {
-        let mut scanner = create_scanner("source");
-        let topcodes = scanner.scan();
+        let (mut scanner, buffer) = create_scanner_and_buffer("source");
+        let topcodes = scanner.scan(&buffer);
 
         assert_eq!(
             topcodes,
@@ -376,8 +373,8 @@ mod test {
 
     #[test]
     fn it_can_scan_a_photo_accurately() {
-        let mut scanner = create_scanner("photo");
-        let topcodes = scanner.scan();
+        let (mut scanner, buffer) = create_scanner_and_buffer("source");
+        let topcodes = scanner.scan(&buffer);
 
         assert_eq!(
             topcodes,
