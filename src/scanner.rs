@@ -1,5 +1,5 @@
 #[cfg(feature = "visualize")]
-use image::{ImageBuffer, Rgb, RgbImage, RgbaImage};
+use image::{GrayImage, ImageBuffer};
 
 use crate::{candidate::Candidate, topcode::TopCode};
 
@@ -303,20 +303,14 @@ impl Scanner {
     }
 
     #[cfg(feature = "visualize")]
-    pub fn write_thresholding_image(&self, name: &str) {
-        let img = RgbaImage::from_fn(self.width as u32, self.height as u32, |x, y| {
+    pub fn write_thresholding_image(&self, path: &str) {
+        let img = GrayImage::from_fn(self.width as u32, self.height as u32, |x, y| {
             let index = (y * self.width as u32 + x) as usize;
             let pixel = self.data[index];
-            let (a, r, g, b) = (
-                (pixel >> 24) & 0xff,
-                (pixel >> 16) & 0xff,
-                (pixel >> 8) & 0xff,
-                pixel & 0xff,
-            );
-            image::Rgba([r as u8, g as u8, b as u8, a as u8])
+            let a = ((pixel >> 24) * 0xff) as u8;
+            image::Luma([a])
         });
-        img.save(format!("{}.png", name))
-            .expect("Failed to save png image");
+        img.save(path).expect("Failed to save png image");
     }
 }
 

@@ -6,22 +6,18 @@ use image::io::Reader as ImageReader;
 fn main() {
     #[cfg(feature = "visualize")]
     {
-        let mut scanner = {
+        let (mut scanner, buffer) = {
             let img = ImageReader::open("assets/photo.png")
                 .unwrap()
                 .decode()
                 .unwrap();
             let (width, height) = (img.width() as usize, img.height() as usize);
-            let image_raw = img.into_rgb8().into_raw();
-            let buffer = &image_raw;
-            Scanner::new(buffer, width, height)
+            let buffer = img.into_rgb8().into_raw();
+            (Scanner::new(width, height), buffer)
         };
 
-        scanner.write_thresholding_image("before_thresholding");
-
-        let _topcodes = scanner.scan();
-
-        scanner.write_thresholding_image("after_thresholding");
+        let _topcodes = scanner.scan(&buffer);
+        scanner.write_thresholding_image("target/thresholded.png");
     }
 
     #[cfg(not(feature = "visualize"))]
