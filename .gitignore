@@ -3,5 +3,5 @@
 Cargo.lock
 
 # Image files
-./*.ppm
-./*.png
+/*.ppm
+/*.png
