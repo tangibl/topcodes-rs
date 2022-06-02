@@ -47,6 +47,22 @@ code is determined. There is a checksum to ensure that the code's number of 1's
 bits is equal to five to reduce the number of valid TopCodes (and thus decrease
 the error rate).
 
+## Performance
+
+The benchmark below uses the `assets/photo.png` image and is performed on a
+computer with the following specs:
+
+CPU: Intel Core i7-9700K @ 3.60 GHz
+RAM: 16.0 GB
+
+While performance benchmarks aren't entirely reliable, this will help with
+development moving forward as I don't want to regress accuracy or performance
+for an improved API.
+
+![Density function](docs/pdf.svg)
+
+![Average iteration time](docs/iteration_times.svg)
+
 ## Plans
 
 The goal of this package is to be as agnostic of the platform as possible. All

@@ -16,7 +16,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let (width, height) = (img.width() as usize, img.height() as usize);
     let image_raw = img.into_rgb8().into_raw();
     let buffer = &image_raw;
-    c.bench_function("scanner 12 samples", |b| {
+    c.bench_function("Scanner (photo)", |b| {
         b.iter(|| scan(buffer, width, height))
     });
 }
