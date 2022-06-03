@@ -69,6 +69,10 @@ impl TopCode {
         topcode
     }
 
+    pub fn radius(&self) -> f64 {
+        self.unit * WIDTH as f64 / 2.0
+    }
+
     /// Sets the x- and y- coordinates for the center point of the symbol.
     pub fn set_location(&mut self, x: f64, y: f64) {
         self.x = x;
