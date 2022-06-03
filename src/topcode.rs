@@ -87,10 +87,18 @@ impl TopCode {
 
     /// Decodes a symbol given any point (cx, by) inside the center circle (bullseye) of the code.
     pub fn decode(&mut self, scanner: &Scanner, cx: usize, cy: usize) -> Option<Code> {
-        let up = scanner.dist(cx, cy, 0, -1);
-        let down = scanner.dist(cx, cy, 0, 1);
-        let left = scanner.dist(cx, cy, -1, 0);
-        let right = scanner.dist(cx, cy, 1, 0);
+        let up = scanner.dist(cx, cy, 0, -1)
+            + scanner.dist(cx.saturating_sub(1), cy, 0, -1)
+            + scanner.dist(cx + 1, cy, 0, -1);
+        let down = scanner.dist(cx, cy, 0, 1)
+            + scanner.dist(cx.saturating_sub(1), cy, 0, 1)
+            + scanner.dist(cx + 1, cy, 0, 1);
+        let left = scanner.dist(cx, cy, -1, 0)
+            + scanner.dist(cx, cy.saturating_sub(1), -1, 0)
+            + scanner.dist(cx, cy + 1, -1, 0);
+        let right = scanner.dist(cx, cy, 1, 0)
+            + scanner.dist(cx, cy.saturating_sub(1), 1, 0)
+            + scanner.dist(cx, cy + 1, 1, 0);
 
         self.x = cx as f64;
         self.y = cy as f64;

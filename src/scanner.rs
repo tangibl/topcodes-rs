@@ -145,7 +145,7 @@ impl Scanner {
     fn threshold(&mut self) -> Vec<Candidate> {
         let mut candidates = Vec::with_capacity(50);
         let mut sum = 128;
-        let s = 30;
+        let s = 32;
 
         for j in 0..self.height {
             let mut level = UnitLevel::WhiteRegion;
@@ -292,7 +292,7 @@ impl Scanner {
             if start + sample == 1 {
                 let x_dist = (i - x as isize).abs();
                 let y_dist = (j - y as isize).abs();
-                return (x_dist + y_dist) >> 1;
+                return x_dist + y_dist;
             }
 
             i += dx;
@@ -339,27 +339,27 @@ mod test {
             vec![
                 TopCode {
                     code: Some(55),
-                    unit: 42.15625,
+                    unit: 48.8125,
                     orientation: -0.07249829200591831,
                     x: 1803.0,
-                    y: 868.0,
+                    y: 878.0,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(31),
-                    unit: 41.91875,
+                    unit: 48.675,
                     orientation: -0.07249829200591831,
                     x: 618.0,
-                    y: 912.1666666666666,
+                    y: 923.0,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(93),
-                    unit: 42.0375,
+                    unit: 39.825,
                     orientation: -0.07249829200591831,
-                    x: 1276.0,
-                    y: 1693.1666666666667,
-                    core: [0, 255, 0, 255, 255, 0, 255, 255]
+                    x: 1275.3333333333333,
+                    y: 1704.0,
+                    core: [56, 255, 0, 255, 255, 0, 255, 255]
                 }
             ]
         );
@@ -375,27 +375,27 @@ mod test {
             vec![
                 TopCode {
                     code: Some(55),
-                    unit: 23.25,
-                    orientation: -0.12083048667653051,
-                    x: 997.0,
-                    y: 483.0,
+                    unit: 48.8125,
+                    orientation: -0.07249829200591831,
+                    x: 1803.0,
+                    y: 878.0,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(31),
-                    unit: 24.0,
+                    unit: 48.675,
                     orientation: -0.07249829200591831,
-                    x: 367.0,
-                    y: 499.1666666666667,
+                    x: 618.0,
+                    y: 923.0,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(93),
-                    unit: 23.25,
+                    unit: 39.825,
                     orientation: -0.07249829200591831,
-                    x: 719.0,
-                    y: 919.0,
-                    core: [0, 255, 0, 255, 255, 0, 255, 255]
+                    x: 1275.3333333333333,
+                    y: 1704.0,
+                    core: [56, 255, 0, 255, 255, 0, 255, 255]
                 }
             ]
         );
