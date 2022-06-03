@@ -1,7 +1,7 @@
 #[cfg(feature = "visualize")]
 use image::{GrayImage, ImageBuffer};
 
-use crate::{candidate::Candidate, topcode::TopCode};
+use crate::{candidate::Candidate, errors::TopCodeError, topcode::TopCode};
 
 /// Default maximum width of a TopCode unit/ring in pixels. This is equivalent to 640 pixels.
 const DEFAULT_MAX_UNIT: usize = 80;
@@ -52,14 +52,10 @@ impl Scanner {
     }
 
     /// Scan the image and return a list of all TopCodes found in it.
-    pub fn scan(&mut self, image_buffer: &[u8]) -> Vec<TopCode> {
-        debug_assert!(
-            image_buffer.len() == self.width * self.height * 3,
-            "Scanner received an image buffer (size={}) that did not match the provided width ({}) and height ({})",
-            image_buffer.len(),
-            self.width,
-            self.height
-        );
+    pub fn scan(&mut self, image_buffer: &[u8]) -> Result<Vec<TopCode>, TopCodeError> {
+        if image_buffer.len() != self.width * self.height * 3 {
+            return Err(TopCodeError::IncorrectBufferSize);
+        }
 
         // All pixels assumed to be opaque.
         let alpha = 0xff000000; // 0xff << 24
@@ -73,7 +69,7 @@ impl Scanner {
             self.data[i] = element;
         }
         let candidates = self.threshold();
-        self.find_codes(&candidates)
+        Ok(self.find_codes(&candidates))
     }
 
     /// Sets the maximum allowable diameter (in pixels) for a TopCode identified by the scanner.
@@ -332,7 +328,7 @@ mod test {
     #[test]
     fn it_can_scan_a_source_image_accurately() {
         let (mut scanner, buffer) = create_scanner_and_buffer("source");
-        let topcodes = scanner.scan(&buffer);
+        let topcodes = scanner.scan(&buffer).unwrap();
 
         assert_eq!(
             topcodes,
@@ -368,7 +364,7 @@ mod test {
     #[test]
     fn it_can_scan_a_photo_accurately() {
         let (mut scanner, buffer) = create_scanner_and_buffer("source");
-        let topcodes = scanner.scan(&buffer);
+        let topcodes = scanner.scan(&buffer).unwrap();
 
         assert_eq!(
             topcodes,

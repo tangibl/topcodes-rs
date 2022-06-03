@@ -16,7 +16,7 @@ fn main() {
             (Scanner::new(width, height), buffer)
         };
 
-        let _topcodes = scanner.scan(&buffer);
+        let _res = scanner.scan(&buffer);
         scanner.write_thresholding_image("target/thresholded.png");
     }
 

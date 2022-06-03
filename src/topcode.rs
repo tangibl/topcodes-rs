@@ -73,6 +73,14 @@ impl TopCode {
         self.unit * WIDTH as f64 / 2.0
     }
 
+    pub fn to_json(&self) -> String {
+        let code = self.code.map_or(-1, |code| code as i32);
+        format!(
+            "{{\"code\":{},\"unit\":{},\"orientation\":{},\"x\":{},\"y\":{}}}",
+            code, self.unit, self.orientation, self.x, self.y
+        )
+    }
+
     /// Sets the x- and y- coordinates for the center point of the symbol.
     pub fn set_location(&mut self, x: f64, y: f64) {
         self.x = x;

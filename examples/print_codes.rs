@@ -13,6 +13,6 @@ fn main() {
         (Scanner::new(width, height), buffer)
     };
 
-    let topcodes = scanner.scan(&buffer);
+    let topcodes = scanner.scan(&buffer).unwrap();
     println!("{:?}", topcodes);
 }

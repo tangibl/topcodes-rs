@@ -15,7 +15,7 @@ fn main() {
     let mut scanner = Scanner::new(width, height);
 
     println!("Scanning TopCodes...");
-    let topcodes = scanner.scan(&buffer);
+    let topcodes = scanner.scan(&buffer).unwrap();
 
     println!("Found {} TopCodes.", topcodes.len());
 
