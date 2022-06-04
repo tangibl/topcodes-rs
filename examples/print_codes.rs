@@ -13,6 +13,6 @@ fn main() {
         (Scanner::new(width, height), buffer)
     };
 
-    let topcodes = scanner.scan(&buffer).unwrap();
+    let topcodes = scanner.scan_rgb_u8(&buffer).unwrap();
     println!("{:?}", topcodes);
 }

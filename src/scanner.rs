@@ -51,8 +51,9 @@ impl Scanner {
         self.height
     }
 
-    /// Scan the image and return a list of all TopCodes found in it.
-    pub fn scan(&mut self, image_buffer: &[u8]) -> Result<Vec<TopCode>, TopCodeError> {
+    /// Scan the image and return a list of all TopCodes found in it. Assuming input is an RGB
+    /// slice of u8 values.
+    pub fn scan_rgb_u8(&mut self, image_buffer: &[u8]) -> Result<Vec<TopCode>, TopCodeError> {
         if image_buffer.len() != self.width * self.height * 3 {
             return Err(TopCodeError::IncorrectBufferSize);
         }
@@ -68,8 +69,46 @@ impl Scanner {
             let element = alpha + (r << 16) + (g << 8) + b;
             self.data[i] = element;
         }
+        Ok(self.scan_data())
+    }
+
+    /// Scan the image and return a list of all TopCodes found in it. Assuming input is an RGBA
+    /// slice of u32 values.
+    pub fn scan_rgba_u32(&mut self, image_buffer: &[u32]) -> Result<Vec<TopCode>, TopCodeError> {
+        if image_buffer.len() != self.width * self.height {
+            return Err(TopCodeError::IncorrectBufferSize);
+        }
+
+        for i in 0..self.data.len() {
+            let pixel = image_buffer[i];
+            let (r, g, b, a) = (
+                (pixel >> 24) & 0xff,
+                (pixel >> 16) & 0xff,
+                (pixel >> 8) & 0xff,
+                pixel & 0xff,
+            );
+            let element = (a << 24) + (r << 16) + (g << 8) + b;
+            self.data[i] = element;
+        }
+        Ok(self.scan_data())
+    }
+
+    /// Scan the image and return a list of all TopCodes found in it. Assuming input is an ARGB
+    /// slice of u32 values.
+    pub fn scan_argb_u32(&mut self, image_buffer: &[u32]) -> Result<Vec<TopCode>, TopCodeError> {
+        if image_buffer.len() != self.width * self.height {
+            return Err(TopCodeError::IncorrectBufferSize);
+        }
+
+        for i in 0..self.data.len() {
+            self.data[i] = image_buffer[i];
+        }
+        Ok(self.scan_data())
+    }
+
+    fn scan_data(&mut self) -> Vec<TopCode> {
         let candidates = self.threshold();
-        Ok(self.find_codes(&candidates))
+        self.find_codes(&candidates)
     }
 
     /// Sets the maximum allowable diameter (in pixels) for a TopCode identified by the scanner.
@@ -328,7 +367,7 @@ mod test {
     #[test]
     fn it_can_scan_a_source_image_accurately() {
         let (mut scanner, buffer) = create_scanner_and_buffer("source");
-        let topcodes = scanner.scan(&buffer).unwrap();
+        let topcodes = scanner.scan_rgb_u8(&buffer).unwrap();
 
         assert_eq!(
             topcodes,
@@ -364,7 +403,7 @@ mod test {
     #[test]
     fn it_can_scan_a_photo_accurately() {
         let (mut scanner, buffer) = create_scanner_and_buffer("source");
-        let topcodes = scanner.scan(&buffer).unwrap();
+        let topcodes = scanner.scan_rgb_u8(&buffer).unwrap();
 
         assert_eq!(
             topcodes,

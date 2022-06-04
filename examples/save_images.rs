@@ -16,7 +16,7 @@ fn main() {
             (Scanner::new(width, height), buffer)
         };
 
-        let _res = scanner.scan(&buffer);
+        let _res = scanner.scan_rgba_u8(&buffer);
         scanner.write_thresholding_image("target/thresholded.png");
     }
 

@@ -1,6 +1,6 @@
 use topcodes::scanner::Scanner;
 
-use image::{io::Reader as ImageReader, DynamicImage, GenericImage, GenericImageView, Pixel, Rgba};
+use image::{io::Reader as ImageReader, DynamicImage, GenericImage, GenericImageView, Rgba};
 
 fn main() {
     println!("Loading image...");
@@ -15,7 +15,7 @@ fn main() {
     let mut scanner = Scanner::new(width, height);
 
     println!("Scanning TopCodes...");
-    let topcodes = scanner.scan(&buffer).unwrap();
+    let topcodes = scanner.scan_rgb_u8(&buffer).unwrap();
 
     println!("Found {} TopCodes.", topcodes.len());
 
