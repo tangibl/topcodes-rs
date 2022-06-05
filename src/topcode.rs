@@ -153,7 +153,6 @@ impl TopCode {
     /// The `unit` is the width of a single ring and `arc_adjustment` corrects the rotation.
     fn read_code(&mut self, scanner: &Scanner, unit: f64, arc_adjustment: f64) -> usize {
         let mut c = 0;
-        let mut bit = 0;
         let mut bits = 0;
 
         for sector in (0..SECTORS).rev() {
@@ -199,7 +198,7 @@ impl TopCode {
             // Opposite data ring
             c += (0xff - (self.core[0] as isize * 2 - 0xff)) as usize;
 
-            bit = if self.core[7] > 128 { 1 } else { 0 };
+            let bit = if self.core[7] > 128 { 1 } else { 0 };
             bits <<= 1;
             bits += bit;
         }

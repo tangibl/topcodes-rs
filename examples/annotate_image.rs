@@ -15,7 +15,13 @@ fn main() {
     let mut scanner = Scanner::new(width, height);
 
     println!("Scanning TopCodes...");
-    let topcodes = scanner.scan_rgb_u8(&buffer).unwrap();
+    let topcodes = scanner.scan(&buffer, |buffer, index| {
+        (
+            buffer[index * 3] as u32,
+            buffer[index * 3 + 1] as u32,
+            buffer[index * 3 + 2] as u32,
+        )
+    });
 
     println!("Found {} TopCodes.", topcodes.len());
 

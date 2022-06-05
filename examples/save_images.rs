@@ -16,7 +16,13 @@ fn main() {
             (Scanner::new(width, height), buffer)
         };
 
-        let _res = scanner.scan_rgba_u8(&buffer);
+        let _topcodes = scanner.scan(&buffer, |buffer, index| {
+            (
+                buffer[index * 3] as u32,
+                buffer[index * 3 + 1] as u32,
+                buffer[index * 3 + 2] as u32,
+            )
+        });
         scanner.write_thresholding_image("target/thresholded.png");
     }
 

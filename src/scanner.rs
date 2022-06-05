@@ -51,63 +51,13 @@ impl Scanner {
         self.height
     }
 
-    /// Scan the image and return a list of all TopCodes found in it. Assuming input is an RGB
-    /// slice of u8 values.
-    pub fn scan_rgb_u8(&mut self, image_buffer: &[u8]) -> Result<Vec<TopCode>, TopCodeError> {
-        if image_buffer.len() != self.width * self.height * 3 {
-            return Err(TopCodeError::IncorrectBufferSize);
-        }
-
-        // All pixels assumed to be opaque.
-        let alpha = 0xff000000; // 0xff << 24
-        for i in 0..self.data.len() {
-            let (r, g, b) = (
-                image_buffer[i * 3] as u32,
-                image_buffer[i * 3 + 1] as u32,
-                image_buffer[i * 3 + 2] as u32,
-            );
-            let element = alpha + (r << 16) + (g << 8) + b;
-            self.data[i] = element;
-        }
-        Ok(self.scan_data())
-    }
-
-    /// Scan the image and return a list of all TopCodes found in it. Assuming input is an RGBA
-    /// slice of u32 values.
-    pub fn scan_rgba_u32(&mut self, image_buffer: &[u32]) -> Result<Vec<TopCode>, TopCodeError> {
-        if image_buffer.len() != self.width * self.height {
-            return Err(TopCodeError::IncorrectBufferSize);
-        }
-
-        for i in 0..self.data.len() {
-            let pixel = image_buffer[i];
-            let (r, g, b, a) = (
-                (pixel >> 24) & 0xff,
-                (pixel >> 16) & 0xff,
-                (pixel >> 8) & 0xff,
-                pixel & 0xff,
-            );
-            let element = (a << 24) + (r << 16) + (g << 8) + b;
-            self.data[i] = element;
-        }
-        Ok(self.scan_data())
-    }
-
-    /// Scan the image and return a list of all TopCodes found in it. Assuming input is an ARGB
-    /// slice of u32 values.
-    pub fn scan_argb_u32(&mut self, image_buffer: &[u32]) -> Result<Vec<TopCode>, TopCodeError> {
-        if image_buffer.len() != self.width * self.height {
-            return Err(TopCodeError::IncorrectBufferSize);
-        }
-
-        for i in 0..self.data.len() {
-            self.data[i] = image_buffer[i];
-        }
-        Ok(self.scan_data())
-    }
-
-    fn scan_data(&mut self) -> Vec<TopCode> {
-        let candidates = self.threshold();
+    /// Scan the image and return a list of all TopCodes found in it.
+    pub fn scan<T: ?Sized>(
+        &mut self,
+        image_buffer: &T,
+        decode_rgb: impl Fn(&T, usize) -> (u32, u32, u32),
+    ) -> Vec<TopCode> {
+        let candidates = self.threshold(image_buffer, decode_rgb);
         self.find_codes(&candidates)
     }
 
@@ -117,7 +67,7 @@ impl Scanner {
     /// candidate codes will be tested). Setting this value to as low as 50 or 60 pixels could be
     /// advisable for some applications. However, setting the maximum diameter too low will prevent
     /// valid codes from being recognized.
-    fn set_max_code_diameter(&mut self, diameter: usize) {
+    pub fn set_max_code_diameter(&mut self, diameter: usize) {
         let f = diameter as f64 / 8.0;
         self.max_unit = f.ceil() as usize;
     }
@@ -177,7 +127,11 @@ impl Scanner {
     ///
     /// "Adaptive Thresholding for the DigitalDesk"
     /// EuroPARC Technical Report EPC-93-110
-    fn threshold(&mut self) -> Vec<Candidate> {
+    fn threshold<T: ?Sized>(
+        &mut self,
+        image_buffer: &T,
+        decode_rgb: impl Fn(&T, usize) -> (u32, u32, u32),
+    ) -> Vec<Candidate> {
         let mut candidates = Vec::with_capacity(50);
         let mut sum = 128;
         let s = 32;
@@ -193,10 +147,7 @@ impl Scanner {
 
             for _i in 0..self.width {
                 // Calculate pixel intensity (0-255)
-                let pixel = self.data[k];
-                let r = (pixel >> 16) & 0xff;
-                let g = (pixel >> 8) & 0xff;
-                let b = pixel & 0xff;
+                let (r, g, b) = decode_rgb(image_buffer, k);
                 let mut a: isize = (r + g + b) as isize / 3;
 
                 // Calculate the average sum as an approximate sum of the last s pixels
@@ -354,7 +305,7 @@ mod test {
     use super::*;
     use image::io::Reader as ImageReader;
 
-    fn create_scanner_and_buffer(asset_name: &str) -> (Scanner, Vec<u8>) {
+    fn setup(asset_name: &str) -> (Scanner, Vec<u8>) {
         let img = ImageReader::open(format!("assets/{}.png", asset_name))
             .unwrap()
             .decode()
@@ -366,8 +317,14 @@ mod test {
 
     #[test]
     fn it_can_scan_a_source_image_accurately() {
-        let (mut scanner, buffer) = create_scanner_and_buffer("source");
-        let topcodes = scanner.scan_rgb_u8(&buffer).unwrap();
+        let (mut scanner, buffer) = setup("source");
+        let topcodes = scanner.scan(&buffer, |buffer, index| {
+            (
+                buffer[index * 3] as u32,
+                buffer[index * 3 + 1] as u32,
+                buffer[index * 3 + 2] as u32,
+            )
+        });
 
         assert_eq!(
             topcodes,
@@ -402,35 +359,41 @@ mod test {
 
     #[test]
     fn it_can_scan_a_photo_accurately() {
-        let (mut scanner, buffer) = create_scanner_and_buffer("source");
-        let topcodes = scanner.scan_rgb_u8(&buffer).unwrap();
+        let (mut scanner, buffer) = setup("photo");
+        let topcodes = scanner.scan(&buffer, |buffer, index| {
+            (
+                buffer[index * 3] as u32,
+                buffer[index * 3 + 1] as u32,
+                buffer[index * 3 + 2] as u32,
+            )
+        });
 
         assert_eq!(
             topcodes,
             vec![
                 TopCode {
                     code: Some(55),
-                    unit: 48.8125,
+                    unit: 22.44375,
                     orientation: -0.07249829200591831,
-                    x: 1803.0,
-                    y: 878.0,
+                    x: 996.8333333333334,
+                    y: 493.5,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(31),
-                    unit: 48.675,
-                    orientation: -0.07249829200591831,
-                    x: 618.0,
-                    y: 923.0,
+                    unit: 22.91875,
+                    orientation: 0.024166097335306114,
+                    x: 366.5,
+                    y: 510.0,
                     core: [0, 255, 0, 255, 255, 0, 255, 255]
                 },
                 TopCode {
                     code: Some(93),
-                    unit: 39.825,
+                    unit: 21.15,
                     orientation: -0.07249829200591831,
-                    x: 1275.3333333333333,
-                    y: 1704.0,
-                    core: [56, 255, 0, 255, 255, 0, 255, 255]
+                    x: 718.8333333333334,
+                    y: 929.5,
+                    core: [113, 255, 0, 255, 255, 0, 255, 255]
                 }
             ]
         );

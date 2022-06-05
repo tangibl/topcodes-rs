@@ -3,7 +3,13 @@ use image::io::Reader as ImageReader;
 use topcodes::scanner::Scanner;
 
 fn scan(scanner: &mut Scanner, buffer: &[u8]) {
-    let topcodes = scanner.scan_rgb_u8(buffer).unwrap();
+    let topcodes = scanner.scan(buffer, |buffer, index| {
+        (
+            buffer[index * 3] as u32,
+            buffer[index * 3 + 1] as u32,
+            buffer[index * 3 + 2] as u32,
+        )
+    });
     assert_eq!(3, topcodes.len());
 }
 

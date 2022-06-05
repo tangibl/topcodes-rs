@@ -18,7 +18,14 @@ let (mut scanner, buffer) = {
     (Scanner::new(width, height), buffer)
 };
 
-let topcodes = scanner.scan(buffer);
+let topcodes = scanner
+    .scan(&buffer, |buffer, index| {
+        (
+            buffer[index * 3] as u32,
+            buffer[index * 3 + 1] as u32,
+            buffer[index * 3 + 2] as u32,
+        )
+    });
 ```
 
 You are free to use any abstraction as long as you can provide the scanner with
