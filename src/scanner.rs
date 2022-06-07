@@ -1,7 +1,7 @@
 #[cfg(feature = "visualize")]
 use image::{GrayImage, ImageBuffer};
 
-use crate::{candidate::Candidate, errors::TopCodeError, topcode::TopCode};
+use crate::{candidate::Candidate, topcode::TopCode};
 
 /// Default maximum width of a TopCode unit/ring in pixels. This is equivalent to 640 pixels.
 const DEFAULT_MAX_UNIT: usize = 80;

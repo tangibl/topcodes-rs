@@ -1,4 +1,4 @@
-use topcodes::scanner::Scanner;
+use topcodes::Scanner;
 
 use image::{io::Reader as ImageReader, DynamicImage, GenericImage, GenericImageView, Rgba};
 

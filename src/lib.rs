@@ -1,5 +1,7 @@
-pub mod candidate;
-pub mod errors;
-pub mod scanner;
-pub mod topcode;
-pub mod utils;
+mod candidate;
+mod scanner;
+mod topcode;
+mod utils;
+
+pub use scanner::Scanner;
+pub use topcode::TopCode;

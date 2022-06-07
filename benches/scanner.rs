@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use image::io::Reader as ImageReader;
-use topcodes::scanner::Scanner;
+use topcodes::Scanner;
 
 fn scan(scanner: &mut Scanner, buffer: &[u8]) {
     let topcodes = scanner.scan(buffer, |buffer, index| {

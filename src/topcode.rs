@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 use crate::scanner::Scanner;
 
 /// Number of sectors in the data ring
-pub const SECTORS: usize = 13;
+pub(crate) const SECTORS: usize = 13;
 
 /// Width of the code in units (ring widths)
 const WIDTH: usize = 8;
@@ -234,7 +234,7 @@ impl TopCode {
     }
 
     /// Only codes with a checksum of 5 are valid.
-    fn checksum(mut bits: Code) -> bool {
+    pub fn checksum(mut bits: Code) -> bool {
         let mut sum = 0;
         for _i in 0..SECTORS {
             sum += bits & 0x01;

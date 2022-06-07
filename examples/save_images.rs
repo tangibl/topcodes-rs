@@ -1,4 +1,4 @@
-use topcodes::scanner::Scanner;
+use topcodes::Scanner;
 
 #[cfg(feature = "visualize")]
 use image::io::Reader as ImageReader;
