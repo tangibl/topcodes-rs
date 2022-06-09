@@ -69,6 +69,18 @@ impl TopCode {
         topcode
     }
 
+    /// Allows the creation of mock TopCodes for testing.
+    pub fn mock(code: Code, unit: f64, orientation: f64, x: f64, y: f64) -> TopCode {
+        TopCode {
+            code: Some(code),
+            core: [0; WIDTH],
+            orientation,
+            unit,
+            x,
+            y,
+        }
+    }
+
     pub fn radius(&self) -> f64 {
         self.unit * WIDTH as f64 / 2.0
     }
