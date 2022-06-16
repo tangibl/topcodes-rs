@@ -1,5 +1,7 @@
 # TopCodes in Rust
 
+[![Continuous integration](https://github.com/battesonb/topcodes-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/battesonb/topcodes-rs/actions/workflows/ci.yml)
+
 This is a direct reimplementation of TopCodes in Rust. The original source by
 Michael Horn can be found [here](https://github.com/TIDAL-Lab/TopCodes).
 
