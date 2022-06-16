@@ -1,5 +1,3 @@
-
-
 #[cfg(feature = "visualize")]
 use image::io::Reader as ImageReader;
 
