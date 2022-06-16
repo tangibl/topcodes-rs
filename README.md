@@ -31,6 +31,11 @@ let topcodes = scanner
 You are free to use any abstraction as long as you can provide the scanner with
 a reference to the raw image buffer (currently assumes an RGB [u8] slice).
 
+## Demo
+
+An example using this library in WASM can be found in the
+[topcodes-wasm-rs](https://github.com/battesonb/topcodes-wasm-rs/) repository.
+
 ## Thresholding
 
 For a peak into how the scanner works, we start with an image such as the
