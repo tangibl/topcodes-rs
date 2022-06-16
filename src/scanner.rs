@@ -26,8 +26,6 @@ pub struct Scanner {
     height: usize,
     /// Holds processed binary pixel data as a single u32 in the ARGB format.
     data: Vec<u32>,
-    /// Candidate code count
-    candidate_count: usize,
     /// Maximum width of a TopCode unit in pixels
     max_unit: usize,
 }
@@ -38,7 +36,6 @@ impl Scanner {
             width,
             height,
             data: vec![0; width * height],
-            candidate_count: 0,
             max_unit: DEFAULT_MAX_UNIT,
         }
     }
@@ -72,16 +69,6 @@ impl Scanner {
         self.max_unit = f.ceil() as usize;
     }
 
-    /// Binary (thresholded black/white) value for pixel (x, y). Value is either 1 (white) or 0
-    /// (black).
-    fn get_bw(&self, x: usize, y: usize) -> u32 {
-        // TODO: If `threshold` has not been run, this is invalid since the alpha component should
-        // contain the thresholded value. We should use type states as mentioned above to avoid
-        // this invalid state.
-        let pixel = self.data[y * self.width + x];
-        return (pixel >> 24) & 0x01;
-    }
-
     /// Average of thresholded pixels in a 3x3 region around (x, y). Returned value is between 0
     /// (black) and 255 (white).
     pub(crate) fn get_sample_3x3(&self, x: usize, y: usize) -> usize {
@@ -97,7 +84,7 @@ impl Scanner {
             }
         }
 
-        return (sum / 9) as usize;
+        (sum / 9) as usize
     }
 
     /// Average of thresholded pixels in a 3x3 region around (x, y). Returned value is either 0
@@ -242,7 +229,7 @@ impl Scanner {
         for c in candidates {
             if !self.overlaps(&spots, c.x, c.y) {
                 let mut spot = TopCode::default();
-                spot.decode(&self, c.x, c.y);
+                spot.decode(self, c.x, c.y);
                 if spot.is_valid() {
                     spots.push(spot);
                 }

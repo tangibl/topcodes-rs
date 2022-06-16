@@ -1,5 +1,3 @@
-use crate::topcode::Code;
-
 /// A candidate [TopCode].
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Candidate {

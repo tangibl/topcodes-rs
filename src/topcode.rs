@@ -64,9 +64,10 @@ impl Default for TopCode {
 impl TopCode {
     /// Create a default TopCode with the given identifier.
     pub fn new(code: Code) -> Self {
-        let mut topcode = Self::default();
-        topcode.code = Some(code);
-        topcode
+        Self {
+            code: Some(code),
+            ..Default::default()
+        }
     }
 
     /// Allows the creation of mock TopCodes for testing.
@@ -215,13 +216,13 @@ impl TopCode {
             bits += bit;
         }
 
-        return if Self::checksum(bits) {
+        if Self::checksum(bits) {
             self.code = Some(bits);
             c
         } else {
             self.code = None;
             0
-        };
+        }
     }
 
     /// Tries each of the possible rotations and returns the lowest.
@@ -242,7 +243,7 @@ impl TopCode {
         }
 
         self.orientation += arc_adjustment;
-        return min;
+        min
     }
 
     /// Only codes with a checksum of 5 are valid.
@@ -250,16 +251,15 @@ impl TopCode {
         let mut sum = 0;
         for _i in 0..SECTORS {
             sum += bits & 0x01;
-            bits = bits >> 1;
+            bits >>= 1;
         }
 
-        return sum == 5;
+        sum == 5
     }
 
     /// Returns true if the given point is inside the bullseye
     pub(crate) fn in_bullseye(&self, px: f64, py: f64) -> bool {
-        return ((self.x - px) * (self.x - px) + (self.y - py) * (self.y - py))
-            <= (self.unit * self.unit);
+        ((self.x - px) * (self.x - px) + (self.y - py) * (self.y - py)) <= (self.unit * self.unit)
     }
 
     /// Determines the symbol's unit length by counting the number of pixels between the outer

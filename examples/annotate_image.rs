@@ -56,7 +56,7 @@ fn main() {
         );
     }
 
-    if topcodes.len() == 0 {
+    if topcodes.is_empty() {
         println!("Aborting as no TopCodes were found.");
     } else {
         println!("Saving image...");
