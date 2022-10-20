@@ -1,6 +1,6 @@
 # TopCodes in Rust
 
-[![Continuous integration](https://github.com/battesonb/topcodes-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/battesonb/topcodes-rs/actions/workflows/ci.yml)
+[![Build](https://github.com/tangibl/topcodes-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/tangibl/topcodes-rs/actions/workflows/ci.yml)
 
 This is a direct reimplementation of TopCodes in Rust. The original source by
 Michael Horn can be found [here](https://github.com/TIDAL-Lab/TopCodes).
@@ -36,7 +36,7 @@ a reference to the raw image buffer (currently assumes an RGB [u8] slice).
 ## Demo
 
 An example using this library in WASM can be found in the
-[topcodes-wasm-rs](https://github.com/battesonb/topcodes-wasm-rs/) repository.
+[topcodes-wasm-rs](https://github.com/tangibl/topcodes-wasm-rs/) repository.
 
 ## Thresholding
 
