@@ -1,6 +1,7 @@
 # TopCodes in Rust
 
 [![Build](https://github.com/tangibl/topcodes-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/tangibl/topcodes-rs/actions/workflows/ci.yml)
+![Crates.io](https://img.shields.io/crates/v/topcodes)
 
 This is a direct reimplementation of TopCodes in Rust. The original source by
 Michael Horn can be found [here](https://github.com/TIDAL-Lab/TopCodes).
