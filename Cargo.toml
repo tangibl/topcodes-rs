@@ -3,17 +3,18 @@ name = "topcodes"
 version = "0.1.0"
 edition = "2021"
 exclude = [
-  "assets/"
+  ".github",
+  "assets/",
+  "docs/",
+  "CHANGELOG.md"
 ]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-image = { version = "0.24.2", optional = true }
+image = { version = "0.24.4", optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.3.5", features = ["html_reports"] }
-image = "0.24.2"
+criterion = { version = "0.4.0", features = ["html_reports"] }
+image = "0.24.4"
 
 [[bench]]
 name = "scanner"
