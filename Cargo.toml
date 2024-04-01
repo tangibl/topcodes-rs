@@ -13,11 +13,11 @@ exclude = [
 ]
 
 [dependencies]
-image = { version = "0.24.4", optional = true }
+image = { version = "0.25.1", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
-image = "0.24.4"
+image = "0.25.1"
 
 [[bench]]
 name = "scanner"
